@@ -35,7 +35,10 @@
             -f
         #end if
         #if str($input_options.input_options_selector) == "advanced":
-            -s ${input_options.skip} -u ${input_options.stop_after} -5 ${input_options.trim_five} -3 ${input_options.trim_three}
+            #if int($input_options.stop_after) > 0:
+                -u ${input_options.stop_after}
+            #end if
+            -s ${input_options.skip} -5 ${input_options.trim_five} -3 ${input_options.trim_three}
         #end if
         #if str($scoring_options.scoring_options_selector) == "advanced":
             --ma ${scoring_options.match_bonus} --mp ${scoring_options.max_mismatch},${scoring_options.min_mismatch}
@@ -53,7 +56,10 @@
                 --known-splicesite-infile splice_sites.txt
             #end if
         #end if
-        | samtools view -bS - | samtools sort - -o hsbam > "${output_alignments}"
+        #if str($report_options.report_options_selector) == "advanced":
+          -k ${report_options.primary_alignments}
+        #end if
+        | samtools view -b - | samtools sort -o - hsbam > "${output_alignments}"
     ]]></command>
     <inputs>
         <conditional name="input_format">
@@ -174,7 +180,20 @@
                 <param name="known_splice_gtf" label="GTF file with known splice sites" type="data" format="gtf" optional="True" />
             </when>
         </conditional>
+        <conditional name="report_options">
+            <param label="Report parameters" name="report_options_selector" type="select">
+                <option value="defaults">Use default values</option>
+                <option value="advanced">Specify report parameters</option>
+            </param>
+            <when value="defaults" />
+            <when value="advanced">
+                <param name="primary_alignments" type="integer" value="1" label="Search for at most this many distinct, primary alignments." help="Default is 5" min="1" max="10"/>
+	    </when>
+        </conditional>
     </inputs>
+    <outputs>
+        <data name="output_alignments" format="bam" />
+    </outputs>
     <tests>
         <test>
             <param name="input_format_selector" value="fastq" />
@@ -193,14 +212,22 @@
             <param name="input_options_selector" value="advanced" />
             <param name="trim_three" value="15" />
             <param name="trim_five" value="15" />
-            <param name="reads_f" ftype="fastqsanger" value="hisat_input_2_forward.fastq" /> 
-            <param name="reads_r" ftype="fastqsanger" value="hisat_input_2_reverse.fastq" /> 
+            <param name="reads_f" ftype="fastqsanger" value="hisat_input_2_forward.fastq" />
+            <param name="reads_r" ftype="fastqsanger" value="hisat_input_2_reverse.fastq" />
+            <output name="output_alignments" ftype="bam" file="hisat_output_2.bam" compare="sim_size"/>
+        </test>
+	<test>
+            <param name="input_format_selector" value="fastq" />
+            <param name="paired_selector" value="paired" />
+            <param name="reference_genome_source" value="history" />
+            <param name="history_item" value="phiX.fa" ftype="fasta" />
+            <param name="reads_f" ftype="fastqsanger" value="hisat_input_2_forward.fastq" />
+            <param name="reads_r" ftype="fastqsanger" value="hisat_input_2_reverse.fastq" />
+            <param name="report_options_selector" value="advanced"/>
+            <param name="primary_alignments" value="10"/>
             <output name="output_alignments" ftype="bam" file="hisat_output_2.bam" />
         </test>
     </tests>
-    <outputs>
-        <data name="output_alignments" format="bam" />
-    </outputs>
     <help><![CDATA[
 Introduction
 ============
